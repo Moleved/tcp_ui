@@ -2,10 +2,11 @@ package sample;
 
 import com.company.Schedule;
 import javafx.application.Application;
-import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
+import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.scene.Scene;
+import javafx.scene.control.Button;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.cell.TextFieldTableCell;
@@ -21,9 +22,6 @@ public class Main extends Application {
     public void start(Stage primaryStage) throws Exception{
         TcpClient client = new TcpClient(list);
         primaryStage.setTitle("Hello World");
-
-        Schedule[] schedules = new Schedule[list.size()];
-        list.toArray(schedules);
 
         TableView tableView = new TableView();
         tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
@@ -49,15 +47,50 @@ public class Main extends Application {
             public void handle(TableColumn.CellEditEvent<Schedule, String> event) {
                 ((Schedule) event.getTableView().getItems().get(event.getTablePosition().getRow())).setTime(event.getNewValue());
                 System.out.println(event.getNewValue());
+                client.sendObject(event.getRowValue());
             }
         });
 
-        tableView.getItems().addAll(schedules);
+        Button add = new Button("Add");
+
+        add.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                Schedule schedule = new Schedule();
+                schedule.setId(list.get(list.size() - 1).getId() + 1);
+                System.out.println("New element ID: " + schedule.getId());
+                schedule.setName("Subject");
+                schedule.setTime("00:00");
+
+                tableView.getItems().clear();
+                int size = list.size();
+                client.sendObject(schedule);
+                list = new ArrayList<>();
+                client.receiveList(size + 1, list);
+                tableView.getItems().setAll(list);
+            }
+        });
+
+        Button remove = new Button("Remove");
+
+        remove.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                Schedule sc = (Schedule) tableView.getSelectionModel().getSelectedItem();
+                sc.setDeleted(true);
+                client.sendObject(sc);
+                tableView.getItems().remove(sc);
+            }
+        });
+
+        tableView.getItems().setAll(list);
         tableView.getColumns().addAll(column1, column2);
 
         GridPane pane = new GridPane();
 
-        pane.add(tableView, 0, 0);
+        pane.add(tableView, 0, 0, 2, 4);
+        pane.add(add, 2, 1);
+        pane.add(remove, 2, 2);
 
         primaryStage.setScene(new Scene(pane, 300, 275));
         primaryStage.show();

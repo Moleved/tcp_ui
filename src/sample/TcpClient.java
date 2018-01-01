@@ -12,6 +12,9 @@ public class TcpClient
     public final static String SERVER_HOSTNAME = "localhost";
     public final static int COMM_PORT = 5050;
 
+    InputStream iStream = null;
+    ObjectInputStream oiStream = null;
+
     private Socket socket;
 
     public TcpClient(ArrayList<Schedule> list)
@@ -22,17 +25,9 @@ public class TcpClient
 
             System.out.println("Connected");
 
-            InputStream iStream = this.socket.getInputStream();
-            ObjectInputStream oiStream = new ObjectInputStream(iStream);
+            iStream = this.socket.getInputStream();
 
-            Schedule schedule = null;
-            while((schedule = (Schedule) oiStream.readObject()) != null) {
-                list.add(schedule);
-
-                System.out.println("Received: Schedule: " + schedule.getId());
-
-                if (list.size() == 5) break;
-            }
+            receiveList(5, list);
         }
         catch (UnknownHostException uhe)
         {
@@ -45,12 +40,25 @@ public class TcpClient
                     SERVER_HOSTNAME + ":" + COMM_PORT);
             System.exit(1);
         }
-        catch(ClassNotFoundException cne)
-        {
-            System.out.println("Wanted class Schedule, but got class " + cne);
+    }
+
+    public void receiveList(int size, ArrayList<Schedule> list) {
+        try {
+            if (oiStream == null) oiStream = new ObjectInputStream(iStream);
+
+            Schedule schedule = null;
+            while((schedule = (Schedule) oiStream.readObject()) != null) {
+                list.add(schedule);
+
+                System.out.println("Received: Schedule: " + schedule.getId());
+
+                if (list.size() == size) break;
+            }
+        } catch (ClassNotFoundException ex) {
+            ex.printStackTrace();
+        } catch (IOException ex) {
+            ex.printStackTrace();
         }
-        System.out.println("Received payload:");
-        System.out.println(list.toString());
     }
 
     public void sendObject(Schedule schedule) {
